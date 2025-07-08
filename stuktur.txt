@@ -1,0 +1,38 @@
+/kelulusan
+├── /assets                # Folder untuk file assets (CSS, JS, dan gambar)
+│   ├── /css               # Folder untuk file CSS (tailwind, custom styles, dll)
+│   │   ├── tailwind.css   # File CSS dari Tailwind (jika diunduh atau dibuat)
+│   │   └── style.css      # File CSS khusus jika perlu menambahkan styling tambahan
+│   ├── /js                # Folder untuk file JS (JavaScript)
+│   │   └── main.js        # JavaScript untuk aplikasi (validasi, interaktivitas, dll)
+│   └── /images            # Folder untuk gambar (logo, background, dll)
+│       └── logo.png       # Gambar logo aplikasi
+├── /admin                 # Folder untuk halaman admin
+│   ├── admin_dashboard.php # Halaman Dashboard untuk Admin
+│   ├── data_siswa.php     # Halaman untuk mengelola data siswa
+│   ├── data_user.php      # Halaman untuk mengelola data pengguna
+│   ├── data_mapel.php     # Halaman untuk mengelola mata pelajaran
+│   ├── rekap_kelas_mapel.php # Halaman untuk rekap nilai berdasarkan mata pelajaran
+│   └── import_nilai.php  # Halaman untuk mengimpor nilai siswa
+├── /guru_mapel            # Folder untuk halaman Guru Mapel
+│   ├── guru_mapel_dashboard.php # Halaman dashboard untuk Guru Mapel
+│   └── input_nilai.php    # Halaman untuk menginput nilai
+├── /wali_kelas            # Folder untuk halaman Guru Walas
+│   ├── wali_kelas_dashboard.php # Halaman dashboard untuk Guru Walas
+│   └── lihat_kelas.php    # Halaman untuk melihat nilai siswa di kelas yang diawasi
+├── /siswa                 # Folder untuk halaman Siswa
+│   ├── siswa_dashboard.php  # Halaman dashboard untuk Siswa
+│   └── cek_lulus.php      # Halaman untuk mengecek kelulusan siswa
+├── /includes              # Folder untuk file PHP yang digunakan bersama
+│   ├── koneksi.php        # File koneksi database
+│   └── functions.php      # File fungsi tambahan (misalnya: validasi, pengecekan kelulusan)
+├── /vendor                # Folder untuk library eksternal (misalnya PhpSpreadsheet)
+│   └── autoload.php       # File autoload untuk mengimpor library
+├── /uploads               # Folder untuk menyimpan file upload (misalnya: file import nilai)
+│   └── import_nilai.xlsx  # Contoh template untuk mengimpor nilai
+├── index.php              # Halaman utama untuk aplikasi
+├── login.php              # Halaman login pengguna
+├── logout.php             # Halaman untuk keluar dari aplikasi
+├── template_head.php      # Template head untuk halaman-halaman HTML
+├── template_foot.php      # Template footer untuk halaman-halaman HTML
+└── /assets/css            # Folder CSS untuk Tailwind dan style tambahan
