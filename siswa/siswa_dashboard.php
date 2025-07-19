@@ -1,134 +1,87 @@
 <?php
 session_start();
+
 include('../includes/koneksi.php');
 
-// Cek apakah user sudah login dan memiliki role siswa
+// Cek login dan role
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'siswa') {
     header("Location: ../login.php");
     exit();
 }
 
-// Ambil NIS dari session, fallback ke username jika nis belum diset
-$nis = $_SESSION['nis'] ?? $_SESSION['username'] ?? null;
+$nis = $_SESSION['nis'] ?? null;
 if (!$nis) {
     echo "NIS tidak ditemukan di session. Silakan login ulang.";
+    session_destroy();
     exit();
 }
 
-// Ambil data siswa dari tabel siswa
+// Ambil data siswa
 $sql_siswa = "SELECT nama FROM siswa WHERE nis = '$nis'";
 $result_siswa = mysqli_query($conn, $sql_siswa);
 $row_siswa = mysqli_fetch_assoc($result_siswa);
 $nama_siswa = $row_siswa['nama'] ?? '-';
 
-// Ambil data nilai dari tabel nilai
-$sql_nilai = "SELECT * FROM nilai WHERE nis = '$nis'";
+// Ambil data nilai
+$sql_nilai = "
+    SELECT 
+        smt1, smt2, smt3, smt4, smt5, uas, kkm
+    FROM nilai
+    WHERE nis = '$nis'
+";
 $result_nilai = mysqli_query($conn, $sql_nilai);
 
-// Inisialisasi kelulusan akhir
+// Hitung status kelulusan akhir
 $total_lulus = true;
+$data_ditemukan = false;
+
+while ($row = mysqli_fetch_assoc($result_nilai)) {
+    $data_ditemukan = true;
+
+    $smt1 = $row['smt1'] ?? 0;
+    $smt2 = $row['smt2'] ?? 0;
+    $smt3 = $row['smt3'] ?? 0;
+    $smt4 = $row['smt4'] ?? 0;
+    $smt5 = $row['smt5'] ?? 0;
+    $uas  = $row['uas']  ?? 0;
+    $kkm  = $row['kkm']  ?? 80;
+
+    // Cek jika nilai belum diisi, tetap lanjut
+    if (
+        $smt1 < $kkm || $smt2 < $kkm || $smt3 < $kkm ||
+        $smt4 < $kkm || $smt5 < $kkm || $uas < $kkm
+    ) {
+        $total_lulus = false;
+    }
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard Siswa</title>
+    <title>Status Kelulusan</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-
-<a href="skl.php?nis=<?= $_SESSION['username']; ?>" target="_blank" class="btn btn-success">
-    Cetak SKL
-</a>
-
-<a href="cetak_skl.php?nis=<?= $_SESSION['username']; ?>" target="_blank" class="btn btn-success">
-    Cetak SKL (PDF)
-</a>
-
-
 <div class="container mt-5">
-    <h3 class="text-center mb-4">Dashboard Siswa - Status Kelulusan</h3>
+    <h3 class="text-center mb-4">Status Kelulusan Siswa</h3>
 
-    <div class="mb-4">
+    <div class="card p-4 shadow-sm">
         <p><strong>Nama:</strong> <?= htmlspecialchars($nama_siswa) ?></p>
         <p><strong>NIS:</strong> <?= htmlspecialchars($nis) ?></p>
-    </div>
-    <!-- Tombol Cetak SKL (PDF) -->
-    <div class="text-center mb-4">
-        <a href="cetak_skl.php?nis=<?= $_SESSION['username']; ?>" target="_blank" class="btn btn-success">
-            Cetak SKL (PDF)
-        </a>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-bordered table-striped">
-            <thead class="table-dark text-center">
-                <tr>
-                    <th>No</th>
-                    <th>Mata Pelajaran</th>
-                    <th>KKM</th>
-                    <th>SMT 1</th>
-                    <th>SMT 2</th>
-                    <th>SMT 3</th>
-                    <th>SMT 4</th>
-                    <th>SMT 5</th>
-                    <th>UAS</th>
-                    <th>Rata-rata</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php
-                $no = 1;
-                while ($row = mysqli_fetch_assoc($result_nilai)) {
-                    // Pastikan kolom mapel tersedia dan aman
-                    $mapel = $row['mapel'] ?? '-';
 
-                    $rata_rata = round(
-                        ($row['smt1'] + $row['smt2'] + $row['smt3'] + $row['smt4'] + $row['smt5'] + $row['uas']) / 6,
-                        2
-                    );
-
-                    $lulus_mapel = (
-                        $row['smt1'] >= $row['kkm'] &&
-                        $row['smt2'] >= $row['kkm'] &&
-                        $row['smt3'] >= $row['kkm'] &&
-                        $row['smt4'] >= $row['kkm'] &&
-                        $row['smt5'] >= $row['kkm'] &&
-                        $row['uas'] >= $row['kkm']
-                    );
-
-                    if (!$lulus_mapel) {
-                        $total_lulus = false;
-                    }
-
-                    echo "<tr class='text-center'>
-                        <td>{$no}</td>
-                        <td>" . htmlspecialchars($mapel) . "</td>
-                        <td>{$row['kkm']}</td>
-                        <td>{$row['smt1']}</td>
-                        <td>{$row['smt2']}</td>
-                        <td>{$row['smt3']}</td>
-                        <td>{$row['smt4']}</td>
-                        <td>{$row['smt5']}</td>
-                        <td>{$row['uas']}</td>
-                        <td>{$rata_rata}</td>
-                        <td class='" . ($lulus_mapel ? "text-success" : "text-danger") . "'>" .
-                            ($lulus_mapel ? "Lulus" : "Tidak Lulus") .
-                        "</td>
-                    </tr>";
-                    $no++;
-                }
-                ?>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="text-center mt-4">
-        <h4>Status Kelulusan Akhir:
+        <h5>Status Kelulusan:
             <span class="<?= $total_lulus ? 'text-success' : 'text-danger' ?>">
                 <?= $total_lulus ? 'Lulus' : 'Tidak Lulus' ?>
             </span>
-        </h4>
+        </h5>
+
+        <div class="mt-4">
+            <a href="cetak_skl.php?nis=<?= urlencode($nis) ?>" target="_blank" class="btn btn-primary">
+                Cetak SKL (PDF)
+            </a>
+        </div>
     </div>
 </div>
 </body>

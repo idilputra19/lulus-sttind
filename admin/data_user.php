@@ -6,116 +6,208 @@ if ($_SESSION['role'] != 'admin') {
     exit();
 }
 
-// Menangani aksi tambah pengguna
+$id_user = $_SESSION['id_user'];
+$user = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM users WHERE id = '$id_user'"));
+$settings = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM settings LIMIT 1"));
+
+// Tambah pengguna
 if (isset($_POST['add_user'])) {
     $username = $_POST['username'];
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT); // Menggunakan hashing untuk password
+    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
     $nama_lengkap = $_POST['nama_lengkap'];
     $role = $_POST['role'];
     $kode_mapel = $_POST['kode_mapel'] ?? null;
     $kelas_wali = $_POST['kelas_wali'] ?? null;
 
-    $sql = "INSERT INTO users (username, password, nama_lengkap, role, kode_mapel, kelas_wali) 
-            VALUES ('$username', '$password', '$nama_lengkap', '$role', '$kode_mapel', '$kelas_wali')";
-    if (mysqli_query($conn, $sql)) {
-        echo "<div class='alert alert-success'>Pengguna berhasil ditambahkan!</div>";
-    } else {
-        echo "<div class='alert alert-danger'>Terjadi kesalahan: " . mysqli_error($conn) . "</div>";
-    }
+    $sql = "INSERT INTO users (username, password, nama_lengkap, role, kode_mapel, kelas_wali, nis, status)
+            VALUES ('$username', '$password', '$nama_lengkap', '$role', 
+                    " . ($kode_mapel ? "'$kode_mapel'" : "NULL") . ",
+                    " . ($kelas_wali ? "'$kelas_wali'" : "NULL") . ",
+                    '', 'aktif')";
+    mysqli_query($conn, $sql);
+    header("Location: data_user.php");
+    exit();
 }
 
-// Mengambil data pengguna
-$sql = "SELECT * FROM users";
-$result = mysqli_query($conn, $sql);
+$result = mysqli_query($conn, "SELECT * FROM users ORDER BY id DESC");
 ?>
 
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <?php include('../template_head.php'); ?>
+    <meta charset="UTF-8">
+    <title>Kelola Pengguna | <?= $settings['nama_sekolah'] ?></title>
+    <link rel="stylesheet" href="../assets/back/vendors/bootstrap/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../assets/back/vendors/font-awesome/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../assets/back/css/main.min.css">
+    <link rel="stylesheet" href="../assets/back/css/costum.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
-<body>
-    <div class="container mt-5">
-        <h3 class="text-center mb-4 text-gray-800">Kelola Pengguna</h3>
-        <!-- Form untuk menambah pengguna -->
-        <form method="POST" action="data_user.php">
-            <div class="mb-3">
-                <label for="username" class="form-label">Username</label>
-                <input type="text" class="form-control" id="username" name="username" required>
-            </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" name="password" required>
-            </div>
-            <div class="mb-3">
-                <label for="nama_lengkap" class="form-label">Nama Lengkap</label>
-                <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap" required>
-            </div>
-            <div class="mb-3">
-                <label for="role" class="form-label">Role</label>
-                <select class="form-control" id="role" name="role" required>
-                    <option value="admin">Admin</option>
-                    <option value="guru_mapel">Guru Mapel</option>
-                    <option value="wali_kelas">Wali Kelas</option>
-                    <option value="siswa">Siswa</option>
-                </select>
-            </div>
-            <div class="mb-3" id="kode_mapel_div" style="display: none;">
-                <label for="kode_mapel" class="form-label">Kode Mata Pelajaran</label>
-                <input type="text" class="form-control" id="kode_mapel" name="kode_mapel">
-            </div>
-            <div class="mb-3" id="kelas_wali_div" style="display: none;">
-                <label for="kelas_wali" class="form-label">Kelas Wali</label>
-                <input type="text" class="form-control" id="kelas_wali" name="kelas_wali">
-            </div>
-            <div class="text-center">
-                <button type="submit" name="add_user" class="btn btn-success w-100">Tambah Pengguna</button>
-            </div>
-        </form>
 
-        <h4 class="mt-5">Daftar Pengguna</h4>
-        <table class="table table-bordered mt-3">
-            <thead>
-                <tr>
-                    <th>Username</th>
-                    <th>Nama Lengkap</th>
-                    <th>Role</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php while ($row = mysqli_fetch_assoc($result)) { ?>
-                <tr>
-                    <td><?php echo $row['username']; ?></td>
-                    <td><?php echo $row['nama_lengkap']; ?></td>
-                    <td><?php echo $row['role']; ?></td>
-                    <td>
-                        <a href="edit_user.php?id=<?php echo $row['id']; ?>" class="btn btn-warning btn-sm">Edit</a>
-                        <a href="delete_user.php?id=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm">Hapus</a>
-                    </td>
-                </tr>
-                <?php } ?>
-            </tbody>
-        </table>
+  <!-- HEADER -->
+    <header class="header">
+        <div class="page-brand">
+            <a class="link" href="index.php">
+                <img src="<?= $settings['logo'] ?>" width="40" alt="LOGO">
+                <span class="brand">E-SKL</span>
+            </a>
+        </div>
+        <div class="flexbox flex-1">
+            <ul class="nav navbar-toolbar">
+                <li><a class="nav-link sidebar-toggler js-sidebar-toggler"><i class="ti-menu"></i></a></li>
+            </ul>
+            <ul class="nav navbar-toolbar">
+                <li class="dropdown dropdown-user">
+                    <a class="nav-link dropdown-toggle link" data-toggle="dropdown">
+                        <img src="../assets/back/img/admin.png">
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-right">
+                        <a class="dropdown-item" href="logout.php"><i class="fa fa-power-off"></i> Keluar</a>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </header>
+
+<body class="fixed-navbar fixed-layout">
+<div class="page-wrapper">
+
+    <?php include 'menu.php'; ?>
+
+    <div class="content-wrapper">
+        <div class="container-fluid">
+            <h2 class="text-center mt-4 mb-4">Kelola Pengguna</h2>
+
+            <div class="mb-3 text-end">
+                <button class="btn btn-success" data-toggle="modal" data-target="#modalTambahUser">+ Tambah Pengguna</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Username</th>
+                            <th>Nama Lengkap</th>
+                            <th>Role</th>
+                            <th>Kode Mapel</th>
+                            <th>Kelas Wali</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php while ($row = mysqli_fetch_assoc($result)) { ?>
+                        <tr>
+                            <td><?= $row['username'] ?></td>
+                            <td><?= $row['nama_lengkap'] ?></td>
+                            <td><?= $row['role'] ?></td>
+                            <td><?= $row['kode_mapel'] ?? '-' ?></td>
+                            <td><?= $row['kelas_wali'] ?? '-' ?></td>
+                            <td>
+                                <button class="btn btn-warning btn-sm btn-edit" data-id="<?= $row['id'] ?>">Edit</button>
+                                <a href="delete_user.php?id=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus?')">Hapus</a>
+                            </td>
+                        </tr>
+                        <?php } ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
+</div>
 
-    <?php include('../template_foot.php'); ?>
-</body>
-</html>
+<!-- MODAL TAMBAH -->
+<div class="modal fade" id="modalTambahUser" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST" action="">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Tambah Pengguna</h5>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input name="username" class="form-control mb-2" placeholder="Username" required>
+          <input name="password" type="password" class="form-control mb-2" placeholder="Password" required>
+          <input name="nama_lengkap" class="form-control mb-2" placeholder="Nama Lengkap" required>
+          <select name="role" id="role" class="form-control mb-2" required>
+            <option value="">-- Pilih Role --</option>
+            <option value="admin">Admin</option>
+            <option value="guru_mapel">Guru Mapel</option>
+            <option value="wali_kelas">Wali Kelas</option>
+            <option value="siswa">Siswa</option>
+          </select>
+          <input name="kode_mapel" id="kode_mapel" class="form-control mb-2" placeholder="Kode Mapel" style="display:none;">
+          <input name="kelas_wali" id="kelas_wali" class="form-control mb-2" placeholder="Kelas Wali" style="display:none;">
+        </div>
+        <div class="modal-footer">
+          <button type="submit" name="add_user" class="btn btn-primary">Simpan</button>
+          <button class="btn btn-secondary" data-dismiss="modal">Batal</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
 
+<!-- MODAL EDIT -->
+<div class="modal fade" id="modalEditUser" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST" action="edit_user.php">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Pengguna</h5>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="id" id="edit_id">
+          <input name="username" id="edit_username" class="form-control mb-2" required>
+          <input name="nama_lengkap" id="edit_nama" class="form-control mb-2" required>
+          <select name="role" id="edit_role" class="form-control mb-2" required>
+            <option value="admin">Admin</option>
+            <option value="guru_mapel">Guru Mapel</option>
+            <option value="wali_kelas">Wali Kelas</option>
+            <option value="siswa">Siswa</option>
+          </select>
+          <input name="kode_mapel" id="edit_kode_mapel" class="form-control mb-2" placeholder="Kode Mapel" style="display:none;">
+          <input name="kelas_wali" id="edit_kelas_wali" class="form-control mb-2" placeholder="Kelas Wali" style="display:none;">
+        </div>
+        <div class="modal-footer">
+          <button type="submit" name="update_user" class="btn btn-primary">Simpan Perubahan</button>
+          <button class="btn btn-secondary" data-dismiss="modal">Batal</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- JS Bootstrap & Script -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Tampilkan field kode_mapel atau kelas_wali berdasarkan role
-document.getElementById('role').addEventListener('change', function() {
-    var role = this.value;
-    if (role === 'guru_mapel') {
-        document.getElementById('kode_mapel_div').style.display = 'block';
-        document.getElementById('kelas_wali_div').style.display = 'none';
-    } else if (role === 'wali_kelas') {
-        document.getElementById('kode_mapel_div').style.display = 'none';
-        document.getElementById('kelas_wali_div').style.display = 'block';
-    } else {
-        document.getElementById('kode_mapel_div').style.display = 'none';
-        document.getElementById('kelas_wali_div').style.display = 'none';
-    }
+$(document).ready(function () {
+    $('#role').on('change', function () {
+        let val = $(this).val();
+        $('#kode_mapel').toggle(val === 'guru_mapel');
+        $('#kelas_wali').toggle(val === 'wali_kelas');
+    });
+
+    $('#edit_role').on('change', function () {
+        let val = $(this).val();
+        $('#edit_kode_mapel').parent().toggle(val === 'guru_mapel');
+        $('#edit_kelas_wali').parent().toggle(val === 'wali_kelas');
+    });
+
+    $('.btn-edit').click(function () {
+        let id = $(this).data('id');
+        $.get('edit_user.php', { id }, function (res) {
+            let data = JSON.parse(res);
+            $('#edit_id').val(data.id);
+            $('#edit_username').val(data.username);
+            $('#edit_nama').val(data.nama_lengkap);
+            $('#edit_role').val(data.role).trigger('change');
+            $('#edit_kode_mapel').val(data.kode_mapel);
+            $('#edit_kelas_wali').val(data.kelas_wali);
+            $('#modalEditUser').modal('show'); // penting
+        });
+    });
 });
 </script>
+</body>
+</html>

@@ -1,154 +1,276 @@
 <?php
-session_start();
+require __DIR__ . '/../dompdf/vendor/autoload.php';
+
+use Dompdf\Dompdf;
+use Dompdf\Options;
+
 include('../includes/koneksi.php');
 
-if ($_SESSION['role'] != 'siswa') {
-    header('Location: ../login.php');
-    exit();
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+$nis = $_GET['nis'] ?? '';
+if (!$nis) {
+    die("NIS tidak ditemukan.");
 }
 
-$nis = $_SESSION['username'];
-
-// Ambil data siswa
 $sql_siswa = "SELECT * FROM siswa WHERE nis = '$nis'";
 $result_siswa = mysqli_query($conn, $sql_siswa);
-if (!$result_siswa) {
-    die("Query siswa gagal: " . mysqli_error($conn));
-}
-$siswa = mysqli_fetch_assoc($result_siswa);
+$data_siswa = mysqli_fetch_assoc($result_siswa);
 
-// Ambil data nilai
-$sql_nilai = "SELECT * FROM nilai WHERE nis = '$nis'";
+if (!$data_siswa) {
+    die("Data siswa tidak ditemukan.");
+}
+
+$sql_nilai = "
+    SELECT 
+        mapel.nama_mapel,
+        nilai.smt1, nilai.smt2, nilai.smt3, nilai.smt4, nilai.smt5, nilai.uas,
+        nilai.kkm
+    FROM mapel
+    LEFT JOIN nilai ON mapel.kode_mapel = nilai.kode_mapel AND nilai.nis = '$nis'
+";
 $result_nilai = mysqli_query($conn, $sql_nilai);
 if (!$result_nilai) {
-    die("Query nilai gagal: " . mysqli_error($conn));
+    die("Gagal mengambil data nilai.");
 }
 
-// Mapping kode_mapel ke nama mapel
-$mapel_nama = [
-    'BIN01' => 'Bahasa Indonesia',
-    'IPA01' => 'Ilmu Pengetahuan Alam',
-    'IPS01' => 'Ilmu Pengetahuan Sosial',
-    'AGM01' => 'Pendidikan Agama',
-    'ING01' => 'Bahasa Inggris',
-    'SEN01' => 'Seni Budaya',
-    // Tambahkan lainnya sesuai kebutuhan
-];
+$sql_pengaturan = "SELECT * FROM settings LIMIT 1";
+$result_pengaturan = mysqli_query($conn, $sql_pengaturan);
+$data_pengaturan = mysqli_fetch_assoc($result_pengaturan);
 
-// Cek kelulusan keseluruhan
-$nilai_array = [];
-$status = "Lulus";
-while ($n = mysqli_fetch_assoc($result_nilai)) {
-    // Menghitung nilai rata-rata dari semester 1-5 dan UAS
-    $rata_rata = ($n['smt1'] + $n['smt2'] + $n['smt3'] + $n['smt4'] + $n['smt5'] + $n['uas']) / 6;
+$kop_surat = $data_pengaturan['kop_surat'] ?? '<h2 style="text-align: center;">[KOP SEKOLAH]</h2>';
+$kepala_sekolah = $data_pengaturan['nama_kepala_sekolah'] ?? 'Nama Kepala Sekolah';
+$nip_kepala_sekolah = $data_pengaturan['nip_kepala_sekolah'] ?? 'NIP. 00000000';
+$nama_sekolah = $data_pengaturan['nama_sekolah'] ?? 'Nama Sekolah';
+$tahun_ajaran = $data_pengaturan['tahun_ajaran'] ?? 'Tahun Ajaran Tidak Ditemukan';
 
-    // Menentukan status kelulusan berdasarkan KKM dan nilai rata-rata
-    if (
-        $n['smt1'] < $n['kkm'] || $n['smt2'] < $n['kkm'] || $n['smt3'] < $n['kkm'] ||
-        $n['smt4'] < $n['kkm'] || $n['smt5'] < $n['kkm'] || $n['uas'] < $n['kkm']
-    ) {
-        $status = "Tidak Lulus";
+$total_nilai = 0;
+$jumlah_mapel = 0;
+$total_lulus = true;
+$rows = [];
+
+$html = "
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        font-size: 11px;
+        margin: 20px;
+        color: #333;
     }
+    .kop-container {
+        text-align: center;
+        margin-bottom: 5px;
+    }
+    .kop-logo img {
+        max-width: 100%;
+        height: auto;
+        margin-top: -30px;
+    }
+    h3 {
+        text-align: center;
+        font-size: 16px;
+        margin: 10px 0;
+    }
+    .identitas-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 15px;
+        text-align: center;
+    }
+    .identitas-siswa {
+        margin: auto;
+        width: auto;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+    .identitas-siswa td {
+        padding: 4px;
+         border: none;
+    }
+    .identitas-siswa td.label {
+        text-align: left;
+        font-weight: bold;
+        width: 35%;
+    }
+    .identitas-siswa td.separator {
+        width: 5%;
+        text-align: center;
+    }
+    .identitas-siswa td.value {
+        text-align: left;
+        width: 60%;
+    }
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 10px;
+        page-break-inside: avoid;
+    }
+    th, td {
+        padding: 6px 8px;
+        border: 1px solid #ccc;
+    }
+    th {
+        background-color: #f5f5f5;
+        font-weight: bold;
+        text-align: center;
+        font-size: 11.5px;
+    }
+    td {
+        font-size: 11px;
+    }
+    td.text-left {
+        text-align: left;
+    }
+    td.text-center {
+        text-align: center;
+    }
+    td.text-right {
+        text-align: right;
+    }
+    .status-lulus {
+        color: green;
+        font-weight: bold;
+        font-size: 14px;
+    }
+    .status-tidak-lulus {
+        color: red;
+        font-weight: bold;
+        font-size: 14px;
+    }
+    .footer {
+        text-align: right;
+        font-size: 10px;
+        margin-top: 30px;
+    }
+</style>
 
-    // Menambahkan data nilai dan rata-rata ke dalam array
-    $n['rata_rata'] = round($rata_rata, 2);
-    $nilai_array[] = $n;
-}
-?>
-
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <title>Surat Keterangan Lulus</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-    <style>
-        body { font-family: Arial, sans-serif; font-size: 12px; margin: 40px; }
-        .judul { text-align: center; font-size: 18px; font-weight: bold; }
-        .table-bordered td, .table-bordered th { border: 1px solid #000; padding: 5px; }
-        .kop { text-align: center; }
-        .ttd { margin-top: 50px; text-align: right; }
-        .btn-print { position: fixed; top: 20px; right: 20px; z-index: 999; }
-        @media print {
-            .btn-print { display: none; }
-        }
-    </style>
-</head>
-<body>
-
-<!-- Tombol Cetak -->
-<button onclick="window.print()" class="btn btn-success btn-print">Download / Cetak PDF</button>
-
-<!-- Kop Surat -->
-<div class="kop">
-    <img src="../assets/kop_surat.png" width="100%">
+<div class='kop-container'>
+    <div class='kop-logo'>
+        <img src='data:image/png;base64," . base64_encode(file_get_contents('kop3.png')) . "' alt='Logo Sekolah'>
+    </div>
 </div>
 
-<!-- Judul -->
-<p class="judul mt-3">SURAT KETERANGAN LULUS<br>No. 420/&nbsp;123/SMPN4/VI/2025</p>
+<h3>SURAT KETERANGAN KELULUSAN (SKL)</h3>
 
-<!-- Identitas -->
-<p>Berdasarkan hasil Rapat Dewan Guru SMPN 4 Kota Solok tanggal 2 Juni 2025 dan Kriteria Kelulusan yang telah ditetapkan, maka siswa berikut dinyatakan:</p>
+<p style='text-align: center; margin-top: -8px; font-size: 14px;'>
+    Nomor: 421.3/{$nis}/SKL-SMPN4/2025
+</p>
+<br>
 
-<table class="mb-3">
-    <tr><td>Nama</td><td>: <b><?= $siswa['nama']; ?></b></td></tr>
-    <tr><td>Tempat, Tanggal Lahir</td><td>: <?= $siswa['tempat_lahir']; ?>, <?= $siswa['tanggal_lahir']; ?></td></tr>
-    <tr><td>NIS / NISN</td><td>: <?= $siswa['nis']; ?> / <?= $siswa['nisn']; ?></td></tr>
-</table>
 
-<p class="text-center"><strong><?= strtoupper($status) ?></strong></p>
+<p style='text-align: justify; font-size: 11px; margin-top: -10px;'>
+    Berdasarkan hasil Rapat Dewan Guru SMPN 4 Kota Solok tanggal 2 Juni 2025 dan Kriteria Kelulusan peserta didik yang telah ditetapkan, Kepala SMPN 4 Kota Solok menerangkan bahwa:
+</p>
 
-<!-- Tabel Nilai -->
-<p>Dengan rincian nilai sebagai berikut:</p>
+<div class='identitas-wrapper'>
+    <table class='identitas-siswa'>
+        <tr><td class='label'>Nama Sekolah</td><td class='separator'>:</td><td class='value'>{$nama_sekolah}</td></tr>
+        <tr><td class='label'>Tahun Ajaran</td><td class='separator'>:</td><td class='value'>{$tahun_ajaran}</td></tr>
+        <tr><td class='label'>Nama</td><td class='separator'>:</td><td class='value'>{$data_siswa['nama']}</td></tr>
+        <tr><td class='label'>NIS</td><td class='separator'>:</td><td class='value'>{$nis}</td></tr>
+    </table>
+</div>
 
-<table class="table table-bordered">
-    <thead class="table-light">
+<p style='font-size: 11px; text-align: justify;'>
+    Bahwa nama tersebut di atas adalah benar siswa SMPN 4 Kota Solok dan telah melaksanakan Ujian Akhir Sekolah, dengan hasil sebagai berikut:
+</p>
+";
+
+$no = 1;
+while ($row = mysqli_fetch_assoc($result_nilai)) {
+    $smt = [$row['smt1'], $row['smt2'], $row['smt3'], $row['smt4'], $row['smt5'], $row['uas']];
+    $smt_filled = array_filter($smt, function($n) {
+        return $n !== null && $n !== '';
+    });
+
+    $rata_rata = count($smt_filled) > 0 ? round(array_sum($smt_filled) / count($smt_filled), 2) : 0;
+    $kkm = $row['kkm'] ?? 80;
+
+    if (count($smt_filled) == 6) {
+        foreach ($smt as $nilai) {
+            if ($nilai < $kkm) {
+                $total_lulus = false;
+                break;
+            }
+        }
+        $total_nilai += $rata_rata;
+        $jumlah_mapel++;
+    }
+
+    $rows[] = "
         <tr>
-            <th>No</th>
-            <th>Mata Pelajaran</th>
-            <th>SMT 1</th>
-            <th>SMT 2</th>
-            <th>SMT 3</th>
-            <th>SMT 4</th>
-            <th>SMT 5</th>
-            <th>UAS</th>
-            <th>Rata-rata</th>
-            <th>Keterangan</th>
+            <td class='text-center'>{$no}</td>
+            <td class='text-left'>{$row['nama_mapel']}</td>
+            <td class='text-center'>{$kkm}</td>
+            <td class='text-center'>{$rata_rata}</td>
+        </tr>";
+    $no++;
+}
+
+$rata_rata_akhir = $jumlah_mapel > 0 ? round($total_nilai / $jumlah_mapel, 2) : 0;
+$status_akhir = $total_lulus ? 'Lulus' : 'Tidak Lulus';
+
+$html .= "
+<h1><center><span class='" . ($total_lulus ? 'status-lulus' : 'status-tidak-lulus') . "'><strong>{$status_akhir}</strong></span></center></h1>
+
+<table>
+    <thead>
+        <tr>
+            <th style='width:5%;'>No</th>
+            <th style='width:55%; text-align: left;'>Mata Pelajaran</th>
+            <th style='width:20%;'>KKM</th>
+            <th style='width:20%;'>Rata-rata</th>
         </tr>
     </thead>
     <tbody>
-        <?php
-        $no = 1;
-        foreach ($nilai_array as $n) {
-            $nama_mapel = isset($mapel_nama[$n['kode_mapel']]) ? $mapel_nama[$n['kode_mapel']] : $n['kode_mapel'];
-            $ket = ($n['smt1'] >= $n['kkm'] && $n['smt2'] >= $n['kkm'] && $n['smt3'] >= $n['kkm'] &&
-                    $n['smt4'] >= $n['kkm'] && $n['smt5'] >= $n['kkm'] && $n['uas'] >= $n['kkm']) ? 'Lulus' : 'Tidak Lulus';
-
-            echo "<tr>
-                <td>$no</td>
-                <td>$nama_mapel</td>
-                <td>{$n['smt1']}</td>
-                <td>{$n['smt2']}</td>
-                <td>{$n['smt3']}</td>
-                <td>{$n['smt4']}</td>
-                <td>{$n['smt5']}</td>
-                <td>{$n['uas']}</td>
-                <td>{$n['rata_rata']}</td>
-                <td>$ket</td>
-            </tr>";
-            $no++;
-        }
-        ?>
+        " . implode('', $rows) . "
+        <tr>
+            <td colspan='2' class='text-right'><strong>Jumlah Nilai</strong></td>
+            <td colspan='2' class='text-center'><strong>{$total_nilai}</strong></td>
+        </tr>
+        <tr>
+            <td colspan='2' class='text-right'><strong>Rata-rata Akhir</strong></td>
+            <td colspan='2' class='text-center'><strong>{$rata_rata_akhir}</strong></td>
+        </tr>
     </tbody>
 </table>
 
-<!-- Tanda Tangan -->
-<div class="ttd">
-    Solok, 2 Juni 2025<br>
-    Kepala SMPN 4 Kota Solok<br><br><br>
-    <b><u>Drs. NAMA KEPALA SEKOLAH</u></b><br>
-    NIP. 1960XXXXXXXXX
-</div>
+<p style='font-size: 11px; text-align: justify;'>
+Demikian Surat Keterangan Lulus (SKL) ini dibuat dengan sebenarnya untuk dapat digunakan sebagaimana mestinya menjelang diterbitkannya ijazah yang bersangkutan.
+</p>
+<table style='width: 100%; border: none; margin-top: 10px; font-size: 11px;'>
+    <tr>
+        <td style='text-align: left; border: none;'>
+            <strong>Total Nilai:</strong> {$total_nilai}<br>
+            <strong>Jumlah Mapel:</strong> {$jumlah_mapel}<br>
+            <strong>Rata-rata Akhir:</strong> {$rata_rata_akhir}<br>
+            <strong>Status Kelulusan:</strong> <span class='" . ($total_lulus ? 'status-lulus' : 'status-tidak-lulus') . "'><strong>{$status_akhir}</strong></span>
+        </td>
+        <td style='text-align: right; border: none;'>
+            Mengetahui,<br>
+            Kepala Sekolah<br><br><br>
+            <strong><u>{$kepala_sekolah}</u></strong><br>
+            NIP. {$nip_kepala_sekolah}
+        </td>
+    </tr>
+</table>
 
-</body>
-</html>
+<div class='footer'>
+    <p>Generated on " . date('d M Y') . "</p>
+</div>
+";
+
+// Render PDF
+$options = new Options();
+$options->set('defaultFont', 'Helvetica');
+$options->set('isHtml5ParserEnabled', true);
+$options->set('isPhpEnabled', true);
+
+$dompdf = new Dompdf($options);
+$dompdf->loadHtml($html);
+$dompdf->setPaper('A4', 'portrait');
+$dompdf->render();
+$dompdf->stream("Laporan_SKL_{$nis}.pdf", ["Attachment" => false]);
+exit;

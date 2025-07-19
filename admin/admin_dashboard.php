@@ -9,7 +9,8 @@ if ($_SESSION['role'] != 'admin') {
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <?php include('../template_head.php'); ?>
+    <?php include('add/header.php'); ?>
+        <?php include('add/footer.php'); ?>
 </head>
 <body>
     <div class="container mt-5">
