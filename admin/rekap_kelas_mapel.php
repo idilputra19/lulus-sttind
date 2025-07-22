@@ -7,7 +7,7 @@ $_SESSION['role'] = $user_data['role'];
 $_SESSION['kelas_wali'] = $user_data['kelas_wali'];
 
 if ($_SESSION['role'] != 'admin') {
-    header('Location: ../login.php');
+    header('Location: login.php');
     exit();
 }
 

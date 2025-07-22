@@ -1,6 +1,8 @@
 <?php
 session_start();
 include('../includes/koneksi.php');
+
+// Pastikan hanya admin yang bisa mengakses
 if ($_SESSION['role'] != 'admin') {
     header('Location: ../login.php');
     exit();
@@ -12,21 +14,38 @@ $settings = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM settings LIMIT
 
 // Tambah pengguna
 if (isset($_POST['add_user'])) {
+    // Validasi form input
     $username = $_POST['username'];
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+    $password = $_POST['password'];
     $nama_lengkap = $_POST['nama_lengkap'];
     $role = $_POST['role'];
     $kode_mapel = $_POST['kode_mapel'] ?? null;
     $kelas_wali = $_POST['kelas_wali'] ?? null;
 
-    $sql = "INSERT INTO users (username, password, nama_lengkap, role, kode_mapel, kelas_wali, nis, status)
-            VALUES ('$username', '$password', '$nama_lengkap', '$role', 
-                    " . ($kode_mapel ? "'$kode_mapel'" : "NULL") . ",
-                    " . ($kelas_wali ? "'$kelas_wali'" : "NULL") . ",
-                    '', 'aktif')";
-    mysqli_query($conn, $sql);
-    header("Location: data_user.php");
-    exit();
+    // Cek jika ada input yang kosong
+    if (empty($username) || empty($password) || empty($nama_lengkap) || empty($role)) {
+        die("Semua field wajib diisi.");
+    }
+
+    // Enkripsi password
+    // $password = password_hash($password, PASSWORD_DEFAULT);
+
+    // Query untuk memasukkan data pengguna
+   $sql = "INSERT INTO users (username, password, nama_lengkap, role, kode_mapel, kelas_wali)
+        VALUES ('$username', '$password', '$nama_lengkap', '$role', 
+                " . ($role == 'guru_mapel' && $kode_mapel ? "'$kode_mapel'" : "NULL") . ",
+                " . ($role == 'wali_kelas' && $kelas_wali ? "'$kelas_wali'" : "NULL") . ")";
+
+
+    // Cek eksekusi query
+    if (mysqli_query($conn, $sql)) {
+        // Jika berhasil, redirect ke halaman data_user.php
+        header("Location: data_user.php");
+        exit();
+    } else {
+        // Menampilkan pesan error jika query gagal
+        die("Error: " . mysqli_error($conn));
+    }
 }
 
 $result = mysqli_query($conn, "SELECT * FROM users ORDER BY id DESC");
@@ -44,30 +63,30 @@ $result = mysqli_query($conn, "SELECT * FROM users ORDER BY id DESC");
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 
-  <!-- HEADER -->
-    <header class="header">
-        <div class="page-brand">
-            <a class="link" href="index.php">
-                <img src="<?= $settings['logo'] ?>" width="40" alt="LOGO">
-                <span class="brand">E-SKL</span>
-            </a>
-        </div>
-        <div class="flexbox flex-1">
-            <ul class="nav navbar-toolbar">
-                <li><a class="nav-link sidebar-toggler js-sidebar-toggler"><i class="ti-menu"></i></a></li>
-            </ul>
-            <ul class="nav navbar-toolbar">
-                <li class="dropdown dropdown-user">
-                    <a class="nav-link dropdown-toggle link" data-toggle="dropdown">
-                        <img src="../assets/back/img/admin.png">
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-right">
-                        <a class="dropdown-item" href="logout.php"><i class="fa fa-power-off"></i> Keluar</a>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-    </header>
+<!-- HEADER -->
+<header class="header">
+    <div class="page-brand">
+        <a class="link" href="index.php">
+            <img src="<?= $settings['logo'] ?>" width="40" alt="LOGO">
+            <span class="brand">E-SKL</span>
+        </a>
+    </div>
+    <div class="flexbox flex-1">
+        <ul class="nav navbar-toolbar">
+            <li><a class="nav-link sidebar-toggler js-sidebar-toggler"><i class="ti-menu"></i></a></li>
+        </ul>
+        <ul class="nav navbar-toolbar">
+            <li class="dropdown dropdown-user">
+                <a class="nav-link dropdown-toggle link" data-toggle="dropdown">
+                    <img src="../assets/back/img/admin.png">
+                </a>
+                <ul class="dropdown-menu dropdown-menu-right">
+                    <a class="dropdown-item" href="logout.php"><i class="fa fa-power-off"></i> Keluar</a>
+                </ul>
+            </li>
+        </ul>
+    </div>
+</header>
 
 <body class="fixed-navbar fixed-layout">
 <div class="page-wrapper">
@@ -103,7 +122,7 @@ $result = mysqli_query($conn, "SELECT * FROM users ORDER BY id DESC");
                             <td><?= $row['kode_mapel'] ?? '-' ?></td>
                             <td><?= $row['kelas_wali'] ?? '-' ?></td>
                             <td>
-                                <button class="btn btn-warning btn-sm btn-edit" data-id="<?= $row['id'] ?>">Edit</button>
+                                <!-- <button class="btn btn-warning btn-sm btn-edit" data-id="<?= $row['id'] ?>">Edit</button> -->
                                 <a href="delete_user.php?id=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus?')">Hapus</a>
                             </td>
                         </tr>
@@ -194,20 +213,39 @@ $(document).ready(function () {
         $('#edit_kelas_wali').parent().toggle(val === 'wali_kelas');
     });
 
-    $('.btn-edit').click(function () {
-        let id = $(this).data('id');
+    $('.btn-edit').on('click', function () {
+        let id = $(this).data('id'); // Ambil data-id dari tombol
         $.get('edit_user.php', { id }, function (res) {
-            let data = JSON.parse(res);
-            $('#edit_id').val(data.id);
-            $('#edit_username').val(data.username);
+            let data = JSON.parse(res); // Parse JSON response
+            $('#edit_id').val(data.id); 
+            $('#edit_username').val(data.username); 
             $('#edit_nama').val(data.nama_lengkap);
-            $('#edit_role').val(data.role).trigger('change');
-            $('#edit_kode_mapel').val(data.kode_mapel);
+            $('#edit_role').val(data.role).trigger('change'); // Update role dan trigger event change
+            $('#edit_kode_mapel').val(data.kode_mapel); 
             $('#edit_kelas_wali').val(data.kelas_wali);
-            $('#modalEditUser').modal('show'); // penting
+            $('#modalEditUser').modal('show'); // Menampilkan modal edit
+        }).fail(function () {
+            alert('Gagal memuat data pengguna.');
         });
     });
 });
+
+$(document).ready(function () {
+    $('#role').on('change', function () {
+        let val = $(this).val();
+        // Toggle visibility berdasarkan role
+        $('#kode_mapel').toggle(val === 'guru_mapel');
+        $('#kelas_wali').toggle(val === 'wali_kelas');
+    });
+
+    $('#edit_role').on('change', function () {
+        let val = $(this).val();
+        // Menyembunyikan atau menampilkan input sesuai dengan role
+        $('#edit_kode_mapel').parent().toggle(val === 'guru_mapel');
+        $('#edit_kelas_wali').parent().toggle(val === 'wali_kelas');
+    });
+});
+
 </script>
 </body>
 </html>

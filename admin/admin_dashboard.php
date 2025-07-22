@@ -1,7 +1,7 @@
 <?php
 session_start();
 if ($_SESSION['role'] != 'admin') {
-    header('Location: ../login.php');
+    header('Location: login.php');
     exit();
 }
 ?>
@@ -42,7 +42,7 @@ if ($_SESSION['role'] != 'admin') {
                 <a href="settings.php" class="btn btn-primary w-100 mb-3">Pengaturan Sistem</a>
             </div>
             <div class="col-md-3">
-                <a href="../logout.php" class="btn btn-danger w-100 mb-3">Logout</a>
+                <a href="logout.php" class="btn btn-danger w-100 mb-3">Logout</a>
             </div>
         </div>
     </div>

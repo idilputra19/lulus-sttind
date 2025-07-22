@@ -1,3 +1,37 @@
+<?php
+session_start(); // Pastikan session dimulai
+error_reporting(E_ALL & ~E_NOTICE);
+
+// Debugging: Periksa apakah sesi 'user' ada
+if (!isset($_SESSION['user'])) {
+    echo "Sesi user tidak ditemukan, pengalihan ke login.php";
+} else {
+    echo "Sesi user ditemukan: " . $_SESSION['user']['nama_lengkap'];
+}
+
+include('../includes/koneksi.php');
+
+// Check if the user session exists
+if (isset($_SESSION['user'])) {
+    $user = $_SESSION['user']; // Fetch user data from session
+} else {
+    // Redirect to login if user session is not set
+    header('Location: ../asd/login.php'); // Corrected 'laogin.php' to 'login.php'
+    exit();
+}
+?>
+
+<!-- Your menu.php content -->
+<ul class="nav navbar-nav">
+    <li class="nav-item">
+        <a class="nav-link" href="index.php">Home</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="profile.php"><?= $user['nama_lengkap']; ?></a>
+    </li>
+    <!-- Add other menu items here -->
+</ul>
+
 <style>
     .profile-image img {
         width: 60px;
@@ -7,11 +41,10 @@
         border: 2px solid #ddd;
     }
 
-.profile-info {
-    padding-top: 10px;
-    color: white;
-}
-
+    .profile-info {
+        padding-top: 10px;
+        color: white;
+    }
 </style>
 
 <div class="page-sidebar">
@@ -46,7 +79,6 @@
             </a>
         </li>
 
-
         <li>
             <a href="data_user.php"><i class="sidebar-item-icon fa fa-users"></i>
                 <span class="nav-label">Data User</span>
@@ -58,7 +90,10 @@
                 <span class="nav-label">Data Nilai</span>
             </a>
         </li>
+    </ul>
 
+    <ul class="side-menu metismenu">
+        <li class="heading">MENU PENGATURAN</li>
         <li>
             <a href="pengaturan.php"><i class="sidebar-item-icon fa fa-cogs"></i>
                 <span class="nav-label">Pengaturan</span>

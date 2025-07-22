@@ -2,6 +2,8 @@
 session_start();
 error_reporting(E_ALL & ~E_NOTICE);
 
+var_dump($_SESSION);
+
 // Cek sesi login
 if (!isset($_SESSION['id_user']) || $_SESSION['role'] != 'admin') {
     header('Location: ../login.php');

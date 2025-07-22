@@ -1,46 +1,33 @@
 <?php
-$koneksi = new mysqli('localhost', 'root', '', 'db_kelulusan');
-if ($koneksi->connect_error) {
-    die("Koneksi gagal: " . $koneksi->connect_error);
-}
+// Menghubungkan ke database
+include('../includes/koneksi.php');
 
-// Ambil jumlah mapel total
-$jumlah_mapel = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS total FROM mapel"))['total'];
+// Query untuk mendapatkan semua data pengguna yang ada
+$query = "SELECT id, password FROM users";
+$result = mysqli_query($conn, $query);
 
-// Ambil semua siswa
-$siswa_result = mysqli_query($koneksi, "SELECT nis FROM siswa");
+if (mysqli_num_rows($result) > 0) {
+    // Proses setiap pengguna untuk meng-hash password mereka
+    while ($user = mysqli_fetch_assoc($result)) {
+        // Hash password dengan password_hash
+        $hashed_password = password_hash($user['password'], PASSWORD_DEFAULT);
 
-while ($siswa = mysqli_fetch_assoc($siswa_result)) {
-    $nis = $siswa['nis'];
+        // Update password yang di-hash ke database
+        $update_query = "UPDATE users SET password = ? WHERE id = ?";
+        $stmt = mysqli_prepare($conn, $update_query);
+        mysqli_stmt_bind_param($stmt, "si", $hashed_password, $user['id']);
+        mysqli_stmt_execute($stmt);
 
-    // Ambil semua nilai siswa
-    $nilai_result = mysqli_query($koneksi, "
-        SELECT 
-            ((smt1 + smt2 + smt3 + smt4 + smt5 + uas) / 6) AS nilai_akhir
-        FROM nilai 
-        WHERE nis = '$nis'
-    ");
-
-    $jumlah_nilai = 0;
-    $total_nilai = 0;
-    while ($row = mysqli_fetch_assoc($nilai_result)) {
-        if ($row['nilai_akhir'] !== null) {
-            $jumlah_nilai++;
-            $total_nilai += $row['nilai_akhir'];
+        if (mysqli_stmt_affected_rows($stmt) > 0) {
+            echo "Password untuk pengguna ID " . $user['id'] . " telah berhasil diperbarui ke hash.<br>";
+        } else {
+            echo "Terjadi kesalahan saat memperbarui password untuk pengguna ID " . $user['id'] . ".<br>";
         }
     }
-
-    // Cek apakah nilai lengkap dan rata-rata cukup
-    if ($jumlah_nilai == $jumlah_mapel) {
-        $rata_rata = $total_nilai / $jumlah_nilai;
-        $status = ($rata_rata >= 80.00) ? 'Lulus' : 'Tidak Lulus';
-    } else {
-        $status = 'Tidak Lulus'; // Karena belum lengkap nilainya
-    }
-
-    // Update status kelulusan di tabel siswa
-    mysqli_query($koneksi, "UPDATE siswa SET status_kelulusan = '$status' WHERE nis = '$nis'");
+} else {
+    echo "Tidak ada data pengguna untuk di-update.";
 }
 
-echo "✅ Proses kelulusan selesai.";
+// Tutup koneksi
+mysqli_close($conn);
 ?>

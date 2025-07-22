@@ -18,21 +18,24 @@ if (isset($_GET['id'])) {
 
 // === FUNGSI: Proses update data pengguna ===
 if (isset($_POST['update_user'])) {
-    $id          = $_POST['id'];
-    $username    = $_POST['username'];
-    $nama_lengkap= $_POST['nama_lengkap'];
-    $role        = $_POST['role'];
-    $kode_mapel  = $_POST['kode_mapel'] ?? null;
-    $kelas_wali  = $_POST['kelas_wali'] ?? null;
+    // Pastikan semua input telah terisi dan aman
+    $id = mysqli_real_escape_string($conn, $_POST['id']);
+    $username = mysqli_real_escape_string($conn, $_POST['username']);
+    $nama_lengkap = mysqli_real_escape_string($conn, $_POST['nama_lengkap']);
+    $role = mysqli_real_escape_string($conn, $_POST['role']);
+    $kode_mapel = isset($_POST['kode_mapel']) ? mysqli_real_escape_string($conn, $_POST['kode_mapel']) : null;
+    $kelas_wali = isset($_POST['kelas_wali']) ? mysqli_real_escape_string($conn, $_POST['kelas_wali']) : null;
 
+    // Query untuk update data pengguna
     $query = "UPDATE users SET 
                 username='$username', 
                 nama_lengkap='$nama_lengkap', 
-                role='$role',
+                role='$role', 
                 kode_mapel=" . ($kode_mapel ? "'$kode_mapel'" : "NULL") . ", 
                 kelas_wali=" . ($kelas_wali ? "'$kelas_wali'" : "NULL") . " 
               WHERE id='$id'";
 
+    // Eksekusi query dan beri notifikasi
     if (mysqli_query($conn, $query)) {
         $_SESSION['msg'] = 'Data pengguna berhasil diperbarui.';
     } else {

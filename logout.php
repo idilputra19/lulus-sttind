@@ -8,5 +8,5 @@ $_SESSION = [];
 session_destroy();
 
 // Redirect ke halaman login
-header('Location: login.php');
+header('Location: kelulusan/admin/login.php');
 exit();

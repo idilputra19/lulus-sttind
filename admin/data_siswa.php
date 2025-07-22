@@ -9,6 +9,13 @@ if ($_SESSION['role'] != 'admin') {
 
 $id_user = $_SESSION['id_user'];
 $user = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM users WHERE id = '$id_user'"));
+$_SESSION['user'] = $user;  // Simpan user di session
+
+$settings = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM settings LIMIT 1"));
+$tahun_ajaran = $settings['tahun_ajaran'];
+
+$id_user = $_SESSION['id_user'];
+$user = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM users WHERE id = '$id_user'"));
 $settings = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM settings LIMIT 1"));
 $tahun_ajaran = $settings['tahun_ajaran'];
 
