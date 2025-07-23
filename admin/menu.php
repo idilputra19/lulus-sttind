@@ -1,3 +1,9 @@
+<head>
+    <link rel="icon" href="./img/logo/kop2.png" sizes="32x32" type="image/png">
+    <link rel="icon" href="./img/logo/kop2.png" sizes="16x16" type="image/png">
+</head>
+
+
 <?php
 session_start(); // Pastikan session dimulai
 error_reporting(E_ALL & ~E_NOTICE);
@@ -88,6 +94,12 @@ if (isset($_SESSION['user'])) {
         <li>
             <a href="data_nilai.php"><i class="sidebar-item-icon fa fa-graduation-cap"></i>
                 <span class="nav-label">Data Nilai</span>
+            </a>
+        </li>
+
+         <li>
+            <a href="legger.php"><i class="sidebar-item-icon fa fa-graduation-cap"></i>
+                <span class="nav-label">legger</span>
             </a>
         </li>
     </ul>

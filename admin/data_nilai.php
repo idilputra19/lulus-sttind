@@ -52,6 +52,13 @@ $pages = ceil($total / $limit);
     <link rel="stylesheet" href="../assets/back/css/main.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Tambahkan CSS Select2 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+
+    <!-- Tambahkan JS Select2 -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+
     <style>
         .table th, .table td {
             text-align: center;
@@ -93,7 +100,120 @@ $pages = ceil($total / $limit);
 
     <?php include 'menu.php'; ?>
 
-    <div class="content-wrapper">
+
+        <div class="content-wrapper">
+        <div class="container-fluid">
+            
+  <h3>Tambah Nilai Siswa</h3>
+<form method="POST" action="insert_nilai.php">
+    <div class="form-group">
+        <label for="nis">NIS Siswa</label>
+        <select name="nis" id="nis" class="form-control select2" required>
+            <option value="">Pilih Siswa</option>
+            <?php
+                // Ambil daftar siswa dari tabel siswa
+                $query_siswa = "SELECT nis, nama FROM siswa WHERE tahun_ajaran = '$tahun_ajaran'";
+                $result_siswa = mysqli_query($conn, $query_siswa);
+                while ($row_siswa = mysqli_fetch_assoc($result_siswa)) {
+                    echo "<option value='" . $row_siswa['nis'] . "'>" . $row_siswa['nis'] . " - " . $row_siswa['nama'] . "</option>";
+                }
+            ?>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="nama_siswa">Nama Siswa</label>
+        <input type="text" class="form-control" name="nama_siswa" id="nama_siswa" readonly>
+    </div>
+
+    <div class="form-group">
+        <label for="kelas">Kelas</label>
+        <input type="text" class="form-control" name="kelas" id="kelas" readonly>
+    </div>
+
+    <div class="form-group">
+        <label for="kode_mapel">Mata Pelajaran</label>
+        <select name="kode_mapel" id="kode_mapel" class="form-control" required>
+            <option value="">Pilih Mata Pelajaran</option>
+            <?php
+                // Ambil daftar mata pelajaran dari tabel mapel
+                $query_mapel = "SELECT kode_mapel, nama_mapel FROM mapel";
+                $result_mapel = mysqli_query($conn, $query_mapel);
+                while ($row_mapel = mysqli_fetch_assoc($result_mapel)) {
+                    echo "<option value='" . $row_mapel['kode_mapel'] . "'>" . $row_mapel['nama_mapel'] . "</option>";
+                }
+            ?>
+        </select>
+    </div>
+
+    <!-- Semester and UAS input fields with max 100 validation -->
+    <div class="form-group">
+        <label for="smt1">Semester 1</label>
+        <input type="number" class="form-control" name="smt1" id="smt1" step="0.01" max="100" required>
+    </div>
+    <div class="form-group">
+        <label for="smt2">Semester 2</label>
+        <input type="number" class="form-control" name="smt2" id="smt2" step="0.01" max="100" required>
+    </div>
+    <div class="form-group">
+        <label for="smt3">Semester 3</label>
+        <input type="number" class="form-control" name="smt3" id="smt3" step="0.01" max="100" required>
+    </div>
+    <div class="form-group">
+        <label for="smt4">Semester 4</label>
+        <input type="number" class="form-control" name="smt4" id="smt4" step="0.01" max="100" required>
+    </div>
+    <div class="form-group">
+        <label for="smt5">Semester 5</label>
+        <input type="number" class="form-control" name="smt5" id="smt5" step="0.01" max="100" required>
+    </div>
+    <div class="form-group">
+        <label for="uas">UAS</label>
+        <input type="number" class="form-control" name="uas" id="uas" step="0.01" max="100" required>
+    </div>
+    <button type="submit" class="btn btn-success">Tambah Nilai</button>
+</form>
+
+<!-- AJAX to get Name and Class Based on NIS -->
+<script>
+    $(document).ready(function() {
+        // Initialize Select2
+        $('#nis').select2();
+
+        // When NIS is selected
+        $('#nis').on('change', function() {
+            var nis = $(this).val();
+            if (nis) {
+                $.ajax({
+                    url: 'get_siswa.php', // File to fetch student name and class
+                    type: 'GET',
+                    data: { nis: nis },
+                    success: function(response) {
+                        // If NIS exists, fill the Name and Class fields
+                        if(response) {
+                            var data = JSON.parse(response);
+                            $('#nama_siswa').val(data.nama);
+                            $('#kelas').val(data.kelas);
+                        } else {
+                            alert('NIS tidak ditemukan!');
+                            $('#nama_siswa').val('');
+                            $('#kelas').val('');
+                        }
+                    }
+                });
+            } else {
+                $('#nama_siswa').val('');
+                $('#kelas').val('');
+            }
+        });
+    });
+</script>
+
+
+    </div>
+    
+    </div>
+        <div class="content-wrapper">
         <div class="container-fluid">
             <h2 class="text-center mt-4 mb-4">Daftar Nilai Siswa</h2>
 
